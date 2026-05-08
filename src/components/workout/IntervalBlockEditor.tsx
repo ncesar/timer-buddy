@@ -1,0 +1,90 @@
+import type { IntervalBlock } from '@/models/workout'
+
+const COLORS = [
+  { label: 'Red', value: '#ef4444' },
+  { label: 'Orange', value: '#f97316' },
+  { label: 'Yellow', value: '#eab308' },
+  { label: 'Green', value: '#22c55e' },
+  { label: 'Blue', value: '#3b82f6' },
+  { label: 'Purple', value: '#a855f7' },
+  { label: 'Pink', value: '#ec4899' },
+  { label: 'Cyan', value: '#06b6d4' },
+]
+
+type Props = {
+  block: IntervalBlock
+  onChange: (block: IntervalBlock) => void
+  onRemove: () => void
+  canMoveUp: boolean
+  canMoveDown: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
+}
+
+export const IntervalBlockEditor = ({ block, onChange, onRemove, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: Props) => (
+  <div className="bg-zinc-800 rounded-xl p-3 flex flex-col gap-2">
+    <div className="flex items-center gap-2">
+      <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: block.color }} />
+      <input
+        className="flex-1 bg-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm outline-none"
+        placeholder="Block name"
+        value={block.name}
+        onChange={e => onChange({ ...block, name: e.target.value })}
+      />
+      <div className="flex gap-1">
+        <button
+          onClick={onMoveUp}
+          disabled={!canMoveUp}
+          className="p-1 text-zinc-400 hover:text-white disabled:opacity-30"
+          aria-label="Move up"
+        >↑</button>
+        <button
+          onClick={onMoveDown}
+          disabled={!canMoveDown}
+          className="p-1 text-zinc-400 hover:text-white disabled:opacity-30"
+          aria-label="Move down"
+        >↓</button>
+        <button
+          onClick={onRemove}
+          className="p-1 text-red-400 hover:text-red-300"
+          aria-label="Remove"
+        >✕</button>
+      </div>
+    </div>
+    <div className="flex gap-2 items-center">
+      <label className="text-zinc-400 text-xs w-14">Duration</label>
+      <input
+        type="number"
+        min={1}
+        max={600}
+        className="w-20 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
+        value={block.duration}
+        onChange={e => onChange({ ...block, duration: Math.max(1, Number(e.target.value)) })}
+      />
+      <span className="text-zinc-400 text-xs">sec</span>
+    </div>
+    <div className="flex gap-2 items-center">
+      <label className="text-zinc-400 text-xs w-14">Color</label>
+      <div className="flex gap-1 flex-wrap">
+        {COLORS.map(c => (
+          <button
+            key={c.value}
+            title={c.label}
+            onClick={() => onChange({ ...block, color: c.value })}
+            className={`w-5 h-5 rounded-full border-2 ${block.color === c.value ? 'border-white' : 'border-transparent'}`}
+            style={{ backgroundColor: c.value }}
+          />
+        ))}
+      </div>
+    </div>
+    <div className="flex gap-2 items-center">
+      <label className="text-zinc-400 text-xs w-14">Voice</label>
+      <input
+        className="flex-1 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
+        placeholder="e.g. Jabs"
+        value={block.voiceCommand ?? ''}
+        onChange={e => onChange({ ...block, voiceCommand: e.target.value || undefined })}
+      />
+    </div>
+  </div>
+)

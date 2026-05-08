@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  overscroll-behavior: none;
+  height: 100%;
+  background-color: #09090b;
+}
+
+#root {
+  height: 100%;
+}
+
+.training-screen {
+  user-select: none;
+  -webkit-user-select: none;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Remove number input spinners */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Native dialog reset */
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+dialog {
+  border: none;
+}
