@@ -1,4 +1,5 @@
 import type { IntervalBlock } from '@/models/workout'
+import { NumberInput } from '@/components/ui/NumberInput'
 
 const COLORS = [
   { label: 'Red', value: '#ef4444' },
@@ -54,13 +55,12 @@ export const IntervalBlockEditor = ({ block, onChange, onRemove, canMoveUp, canM
     <div className="flex gap-3 flex-wrap">
       <div className="flex gap-2 items-center">
         <label className="text-zinc-400 text-xs">At second</label>
-        <input
-          type="number"
+        <NumberInput
           min={0}
           max={9999}
           className="w-16 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
           value={block.atSecond}
-          onChange={e => onChange({ ...block, atSecond: Math.max(0, Number(e.target.value)) })}
+          onChange={n => onChange({ ...block, atSecond: n })}
         />
       </div>
       <label className="flex gap-2 items-center cursor-pointer">
@@ -73,13 +73,12 @@ export const IntervalBlockEditor = ({ block, onChange, onRemove, canMoveUp, canM
         <span className="text-zinc-400 text-xs">Repeat every</span>
         {block.repeat && (
           <>
-            <input
-              type="number"
+            <NumberInput
               min={1}
               max={999}
               className="w-14 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
               value={block.repeatInterval ?? 30}
-              onChange={e => onChange({ ...block, repeatInterval: Math.max(1, Number(e.target.value)) })}
+              onChange={n => onChange({ ...block, repeatInterval: n })}
             />
             <span className="text-zinc-400 text-xs">sec</span>
           </>
