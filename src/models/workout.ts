@@ -21,9 +21,11 @@ export type SimpleRound = RoundBase & { type: 'simple' }
 export type IntervalBlock = {
   id: string
   name: string
-  duration: number
   color: string
   voiceCommand?: string
+  atSecond: number
+  repeat?: boolean
+  repeatInterval?: number
 }
 
 export type IntervalRound = RoundBase & {

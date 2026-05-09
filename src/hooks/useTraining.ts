@@ -6,23 +6,16 @@ import { useVibration } from '@/hooks/useVibration'
 import { tts } from '@/services/tts'
 import { playBell, playBeep, playDoubleBeep, unlockAudio } from '@/services/audio'
 import { requestWakeLock, releaseWakeLock } from '@/services/wakeLock'
-import type { Workout, IntervalRound, InstructionRound, IntervalBlock } from '@/models/workout'
+import type { Workout, InstructionRound, IntervalBlock } from '@/models/workout'
 
-const getIntervalBlock = (round: IntervalRound, elapsed: number): IntervalBlock => {
-  const total = round.blocks.reduce((s, b) => s + b.duration, 0)
-  if (total === 0) return round.blocks[0]
-  const pos = elapsed % total
-  let acc = 0
-  for (const block of round.blocks) {
-    acc += block.duration
-    if (pos < acc) return block
+const getActiveBlock = (blocks: IntervalBlock[], elapsed: number): IntervalBlock | null => {
+  let active: IntervalBlock | null = null
+  for (const block of blocks) {
+    if (elapsed >= block.atSecond) {
+      if (!active || block.atSecond >= active.atSecond) active = block
+    }
   }
-  return round.blocks[round.blocks.length - 1]
-}
-
-const getCurrentCycleIndex = (round: IntervalRound, elapsed: number): number => {
-  const total = round.blocks.reduce((s, b) => s + b.duration, 0)
-  return total > 0 ? Math.floor(elapsed / total) : 0
+  return active
 }
 
 export const useTraining = () => {
@@ -33,8 +26,8 @@ export const useTraining = () => {
   const prevElapsedRef = useRef(0)
   const prevRestElapsedRef = useRef(0)
   const prevBlockIdRef = useRef<string | null>(null)
-  const prevCycleRef = useRef(0)
   const firedInstructionsRef = useRef<Set<string>>(new Set())
+  const firedBlockCuesRef = useRef<Set<string>>(new Set())
 
   // Sync TTS settings
   useEffect(() => {
@@ -68,19 +61,33 @@ export const useTraining = () => {
       return
     }
 
-    // IntervalRound: detect block transitions
+    // IntervalRound: update active block display + fire voice cues at second boundaries
     if (round.type === 'interval' && round.blocks.length > 0) {
-      const block = getIntervalBlock(round, elapsed)
-      const cycle = getCurrentCycleIndex(round, elapsed)
-
-      if (block.id !== prevBlockIdRef.current || cycle !== prevCycleRef.current) {
-        prevBlockIdRef.current = block.id
-        prevCycleRef.current = cycle
-        useTrainingStore.getState()._setCurrentBlock(block)
+      const activeBlock = getActiveBlock(round.blocks, elapsed)
+      if (activeBlock && activeBlock.id !== prevBlockIdRef.current) {
+        console.log('[Training] active block changed:', { name: activeBlock.name, atSecond: activeBlock.atSecond })
+        prevBlockIdRef.current = activeBlock.id
+        useTrainingStore.getState()._setCurrentBlock(activeBlock)
         vibrate(100)
-        if (block.voiceCommand) {
-          const { ttsEnabled } = useSettingsStore.getState()
-          if (ttsEnabled) tts.speak(block.voiceCommand)
+      }
+
+      if (currentSecond > prevSecond) {
+        for (const block of round.blocks) {
+          const key = `${block.id}-${currentSecond}`
+          if (firedBlockCuesRef.current.has(key)) continue
+
+          const shouldFire = currentSecond === block.atSecond ||
+            (block.repeat && block.repeatInterval && block.repeatInterval > 0 &&
+              currentSecond > block.atSecond &&
+              (currentSecond - block.atSecond) % block.repeatInterval === 0)
+
+          if (shouldFire) {
+            firedBlockCuesRef.current.add(key)
+            if (block.voiceCommand) {
+              console.log('[Training] speaking block voice:', block.voiceCommand)
+              tts.speak(block.voiceCommand)
+            }
+          }
         }
       }
     }
@@ -145,8 +152,8 @@ export const useTraining = () => {
     roundTimer.reset()
     prevElapsedRef.current = 0
     firedInstructionsRef.current.clear()
+    firedBlockCuesRef.current.clear()
     prevBlockIdRef.current = null
-    prevCycleRef.current = 0
 
     const { soundEnabled } = useSettingsStore.getState()
     if (soundEnabled) playDoubleBeep()
@@ -189,8 +196,22 @@ export const useTraining = () => {
 
     const { soundEnabled, ttsEnabled } = useSettingsStore.getState()
     if (soundEnabled) playBell()
-    if (ttsEnabled) tts.speak(`Round ${nextIndex + 1}${nextRound ? ', ' + nextRound.name : ''}`)
+    if (ttsEnabled) {
+      const roundNumber = nextIndex + 1
+      const defaultName = `Round ${roundNumber}`
+      const hasCustomName = nextRound?.name && nextRound.name.trim() !== defaultName
+      tts.speak(hasCustomName ? `${defaultName}, ${nextRound!.name}` : defaultName)
+    }
     vibrate(200)
+
+    // Fire voice commands for interval blocks at atSecond=0
+    if (nextRound?.type === 'interval') {
+      for (const block of nextRound.blocks) {
+        if (block.atSecond === 0 && block.voiceCommand) {
+          tts.speak(block.voiceCommand)
+        }
+      }
+    }
 
     roundTimer.start()
   }, [restTimer, roundTimer, vibrate])
@@ -206,27 +227,33 @@ export const useTraining = () => {
     prevElapsedRef.current = 0
     prevRestElapsedRef.current = 0
     prevBlockIdRef.current = null
-    prevCycleRef.current = 0
     firedInstructionsRef.current.clear()
+    firedBlockCuesRef.current.clear()
 
     const { soundEnabled } = useSettingsStore.getState()
     if (soundEnabled) {
       setTimeout(() => playBell(), 800)
     }
 
-    // Set initial block for interval rounds
+    // Fire voice commands for interval blocks at atSecond=0
     const firstRound = workout.rounds[0]
-    if (firstRound?.type === 'interval' && firstRound.blocks.length > 0) {
-      store._setCurrentBlock(firstRound.blocks[0])
-      prevBlockIdRef.current = firstRound.blocks[0].id
+    if (firstRound?.type === 'interval') {
+      for (const block of firstRound.blocks) {
+        if (block.atSecond === 0 && block.voiceCommand) {
+          tts.speak(block.voiceCommand)
+        }
+      }
     }
 
     roundTimer.start()
   }, [store, roundTimer])
 
   const pauseTraining = useCallback(() => {
+    const { status } = useTrainingStore.getState()
+    console.log('[Training] pauseTraining — current status:', status)
     store._setStatus('paused')
-    if (useTrainingStore.getState().status === 'rest') {
+    tts.speak('Paused')
+    if (status === 'rest') {
       restTimer.pause()
     } else {
       roundTimer.pause()
@@ -234,8 +261,11 @@ export const useTraining = () => {
   }, [store, roundTimer, restTimer])
 
   const resumeTraining = useCallback(() => {
+    const { status } = useTrainingStore.getState()
+    console.log('[Training] resumeTraining — current status:', status)
     store._setStatus('running')
-    if (useTrainingStore.getState().status === 'rest') {
+    tts.speak('Resuming')
+    if (status === 'rest') {
       restTimer.resume()
     } else {
       roundTimer.resume()
@@ -243,8 +273,14 @@ export const useTraining = () => {
   }, [store, roundTimer, restTimer])
 
   const skipRound = useCallback(() => {
-    advanceFromRound()
-  }, [advanceFromRound])
+    const { status } = useTrainingStore.getState()
+    console.log('[Training] skipRound — status:', status)
+    if (status === 'rest') {
+      startNextRound()
+    } else {
+      advanceFromRound()
+    }
+  }, [advanceFromRound, startNextRound])
 
   const stopTraining = useCallback(() => {
     roundTimer.reset()

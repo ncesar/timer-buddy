@@ -13,7 +13,8 @@ type Props = {
 export const IntervalRoundForm = ({ round, onChange }: Props) => {
   const addBlock = () => {
     const color = DEFAULT_COLORS[round.blocks.length % DEFAULT_COLORS.length]
-    const block: IntervalBlock = { id: generateId(), name: 'Block', duration: 30, color }
+    const lastAt = round.blocks[round.blocks.length - 1]?.atSecond ?? -30
+    const block: IntervalBlock = { id: generateId(), name: 'Block', atSecond: lastAt + 30, color }
     onChange({ ...round, blocks: [...round.blocks, block] })
   }
 
@@ -34,9 +35,6 @@ export const IntervalRoundForm = ({ round, onChange }: Props) => {
     ;[blocks[i], blocks[j]] = [blocks[j], blocks[i]]
     onChange({ ...round, blocks })
   }
-
-  const totalCycleDuration = round.blocks.reduce((s, b) => s + b.duration, 0)
-  const cycles = totalCycleDuration > 0 ? Math.floor(round.duration / totalCycleDuration) : 0
 
   return (
     <div className="flex flex-col gap-3">
@@ -64,9 +62,6 @@ export const IntervalRoundForm = ({ round, onChange }: Props) => {
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
           <span className="text-zinc-300 text-sm font-medium">Blocks</span>
-          {totalCycleDuration > 0 && (
-            <span className="text-zinc-500 text-xs">{cycles} cycle{cycles !== 1 ? 's' : ''} × {totalCycleDuration}s</span>
-          )}
         </div>
         {round.blocks.map((block, i) => (
           <IntervalBlockEditor

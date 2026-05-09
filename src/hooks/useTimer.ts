@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react'
+import { useRef, useCallback, useEffect, useMemo } from 'react'
 
 type TimerCallbacks = {
   onTick: (elapsed: number) => void
@@ -63,5 +63,5 @@ export const useTimer = (callbacks: TimerCallbacks): TimerControls => {
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
 
-  return { start, pause, resume, reset, seek, isRunning }
+  return useMemo(() => ({ start, pause, resume, reset, seek, isRunning }), [start, pause, resume, reset, seek, isRunning])
 }

@@ -51,17 +51,40 @@ export const IntervalBlockEditor = ({ block, onChange, onRemove, canMoveUp, canM
         >✕</button>
       </div>
     </div>
-    <div className="flex gap-2 items-center">
-      <label className="text-zinc-400 text-xs w-14">Duration</label>
-      <input
-        type="number"
-        min={1}
-        max={600}
-        className="w-20 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
-        value={block.duration}
-        onChange={e => onChange({ ...block, duration: Math.max(1, Number(e.target.value)) })}
-      />
-      <span className="text-zinc-400 text-xs">sec</span>
+    <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-2 items-center">
+        <label className="text-zinc-400 text-xs">At second</label>
+        <input
+          type="number"
+          min={0}
+          max={9999}
+          className="w-16 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
+          value={block.atSecond}
+          onChange={e => onChange({ ...block, atSecond: Math.max(0, Number(e.target.value)) })}
+        />
+      </div>
+      <label className="flex gap-2 items-center cursor-pointer">
+        <input
+          type="checkbox"
+          className="rounded"
+          checked={block.repeat ?? false}
+          onChange={e => onChange({ ...block, repeat: e.target.checked })}
+        />
+        <span className="text-zinc-400 text-xs">Repeat every</span>
+        {block.repeat && (
+          <>
+            <input
+              type="number"
+              min={1}
+              max={999}
+              className="w-14 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
+              value={block.repeatInterval ?? 30}
+              onChange={e => onChange({ ...block, repeatInterval: Math.max(1, Number(e.target.value)) })}
+            />
+            <span className="text-zinc-400 text-xs">sec</span>
+          </>
+        )}
+      </label>
     </div>
     <div className="flex gap-2 items-center">
       <label className="text-zinc-400 text-xs w-14">Color</label>
