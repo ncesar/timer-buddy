@@ -8,6 +8,19 @@ import { playBell, playBeep, playDoubleBeep, unlockAudio } from '@/services/audi
 import { requestWakeLock, releaseWakeLock } from '@/services/wakeLock'
 import type { Workout, InstructionRound, IntervalBlock } from '@/models/workout'
 
+const getLoopBlock = (blocks: IntervalBlock[], elapsed: number): { block: IntervalBlock; cycle: number } | null => {
+  const cycleDuration = blocks.reduce((sum, b) => sum + (b.duration ?? 10), 0)
+  if (cycleDuration === 0) return null
+  const cycle = Math.floor(elapsed / cycleDuration)
+  const pos = elapsed % cycleDuration
+  let acc = 0
+  for (const block of blocks) {
+    acc += block.duration ?? 10
+    if (pos < acc) return { block, cycle }
+  }
+  return { block: blocks[blocks.length - 1], cycle }
+}
+
 const getActiveBlock = (blocks: IntervalBlock[], elapsed: number): IntervalBlock | null => {
   let active: IntervalBlock | null = null
   for (const block of blocks) {
@@ -26,6 +39,7 @@ export const useTraining = () => {
   const prevElapsedRef = useRef(0)
   const prevRestElapsedRef = useRef(0)
   const prevBlockIdRef = useRef<string | null>(null)
+  const prevCycleRef = useRef(0)
   const firedInstructionsRef = useRef<Set<string>>(new Set())
   const firedBlockCuesRef = useRef<Set<string>>(new Set())
 
@@ -61,31 +75,41 @@ export const useTraining = () => {
       return
     }
 
-    // IntervalRound: update active block display + fire voice cues at second boundaries
+    // IntervalRound: loop mode or atSecond mode
     if (round.type === 'interval' && round.blocks.length > 0) {
-      const activeBlock = getActiveBlock(round.blocks, elapsed)
-      if (activeBlock && activeBlock.id !== prevBlockIdRef.current) {
-        console.log('[Training] active block changed:', { name: activeBlock.name, atSecond: activeBlock.atSecond })
-        prevBlockIdRef.current = activeBlock.id
-        useTrainingStore.getState()._setCurrentBlock(activeBlock)
-        vibrate(100)
-      }
+      if (round.loopBlocks) {
+        const result = getLoopBlock(round.blocks, elapsed)
+        if (result) {
+          const { block, cycle } = result
+          if (block.id !== prevBlockIdRef.current || cycle !== prevCycleRef.current) {
+            prevBlockIdRef.current = block.id
+            prevCycleRef.current = cycle
+            useTrainingStore.getState()._setCurrentBlock(block)
+            vibrate(100)
+            if (block.voiceCommand) tts.speak(block.voiceCommand)
+          }
+        }
+      } else {
+        const activeBlock = getActiveBlock(round.blocks, elapsed)
+        if (activeBlock && activeBlock.id !== prevBlockIdRef.current) {
+          prevBlockIdRef.current = activeBlock.id
+          useTrainingStore.getState()._setCurrentBlock(activeBlock)
+          vibrate(100)
+        }
 
-      if (currentSecond > prevSecond) {
-        for (const block of round.blocks) {
-          const key = `${block.id}-${currentSecond}`
-          if (firedBlockCuesRef.current.has(key)) continue
+        if (currentSecond > prevSecond) {
+          for (const block of round.blocks) {
+            const key = `${block.id}-${currentSecond}`
+            if (firedBlockCuesRef.current.has(key)) continue
 
-          const shouldFire = currentSecond === block.atSecond ||
-            (block.repeat && block.repeatInterval && block.repeatInterval > 0 &&
-              currentSecond > block.atSecond &&
-              (currentSecond - block.atSecond) % block.repeatInterval === 0)
+            const shouldFire = currentSecond === block.atSecond ||
+              (block.repeat && block.repeatInterval && block.repeatInterval > 0 &&
+                currentSecond > block.atSecond &&
+                (currentSecond - block.atSecond) % block.repeatInterval === 0)
 
-          if (shouldFire) {
-            firedBlockCuesRef.current.add(key)
-            if (block.voiceCommand) {
-              console.log('[Training] speaking block voice:', block.voiceCommand)
-              tts.speak(block.voiceCommand)
+            if (shouldFire) {
+              firedBlockCuesRef.current.add(key)
+              if (block.voiceCommand) tts.speak(block.voiceCommand)
             }
           }
         }
@@ -154,6 +178,7 @@ export const useTraining = () => {
     firedInstructionsRef.current.clear()
     firedBlockCuesRef.current.clear()
     prevBlockIdRef.current = null
+    prevCycleRef.current = 0
 
     const { soundEnabled } = useSettingsStore.getState()
     if (soundEnabled) playDoubleBeep()
@@ -204,8 +229,8 @@ export const useTraining = () => {
     }
     vibrate(200)
 
-    // Fire voice commands for interval blocks at atSecond=0
-    if (nextRound?.type === 'interval') {
+    // Fire voice commands for non-loop interval blocks at atSecond=0
+    if (nextRound?.type === 'interval' && !nextRound.loopBlocks) {
       for (const block of nextRound.blocks) {
         if (block.atSecond === 0 && block.voiceCommand) {
           tts.speak(block.voiceCommand)
@@ -227,6 +252,7 @@ export const useTraining = () => {
     prevElapsedRef.current = 0
     prevRestElapsedRef.current = 0
     prevBlockIdRef.current = null
+    prevCycleRef.current = 0
     firedInstructionsRef.current.clear()
     firedBlockCuesRef.current.clear()
 
@@ -235,9 +261,9 @@ export const useTraining = () => {
       setTimeout(() => playBell(), 800)
     }
 
-    // Fire voice commands for interval blocks at atSecond=0
+    // Fire voice commands for non-loop interval blocks at atSecond=0
     const firstRound = workout.rounds[0]
-    if (firstRound?.type === 'interval') {
+    if (firstRound?.type === 'interval' && !firstRound.loopBlocks) {
       for (const block of firstRound.blocks) {
         if (block.atSecond === 0 && block.voiceCommand) {
           tts.speak(block.voiceCommand)

@@ -26,11 +26,13 @@ export type IntervalBlock = {
   atSecond: number
   repeat?: boolean
   repeatInterval?: number
+  duration?: number       // loop mode: seconds this block lasts before the next fires
 }
 
 export type IntervalRound = RoundBase & {
   type: 'interval'
   blocks: IntervalBlock[]
+  loopBlocks?: boolean
 }
 
 export type VoiceInstruction = {

@@ -12,10 +12,13 @@ type Props = {
 }
 
 export const IntervalRoundForm = ({ round, onChange }: Props) => {
+  const loopMode = round.loopBlocks ?? false
+
   const addBlock = () => {
     const color = DEFAULT_COLORS[round.blocks.length % DEFAULT_COLORS.length]
-    const lastAt = round.blocks[round.blocks.length - 1]?.atSecond ?? -30
-    const block: IntervalBlock = { id: generateId(), name: 'Block', atSecond: lastAt + 30, color }
+    const block: IntervalBlock = loopMode
+      ? { id: generateId(), name: 'Block', atSecond: 0, color, duration: 10 }
+      : { id: generateId(), name: 'Block', atSecond: (round.blocks[round.blocks.length - 1]?.atSecond ?? -30) + 30, color }
     onChange({ ...round, blocks: [...round.blocks, block] })
   }
 
@@ -63,6 +66,20 @@ export const IntervalRoundForm = ({ round, onChange }: Props) => {
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
           <span className="text-zinc-300 text-sm font-medium">Blocks</span>
+          <label className="flex gap-2 items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="rounded"
+              checked={loopMode}
+              onChange={e => onChange({ ...round, loopBlocks: e.target.checked })}
+            />
+            <span className="text-zinc-400 text-xs">Loop</span>
+            {loopMode && round.blocks.length > 0 && (
+              <span className="text-zinc-500 text-xs">
+                cycle: {round.blocks.reduce((s, b) => s + (b.duration ?? 10), 0)}s
+              </span>
+            )}
+          </label>
         </div>
         {round.blocks.map((block, i) => (
           <IntervalBlockEditor
@@ -74,6 +91,7 @@ export const IntervalRoundForm = ({ round, onChange }: Props) => {
             canMoveDown={i < round.blocks.length - 1}
             onMoveUp={() => moveBlock(i, -1)}
             onMoveDown={() => moveBlock(i, 1)}
+            loopMode={loopMode}
           />
         ))}
         <Button variant="ghost" size="sm" onClick={addBlock} className="self-start">

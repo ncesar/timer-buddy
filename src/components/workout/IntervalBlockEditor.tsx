@@ -20,9 +20,10 @@ type Props = {
   canMoveDown: boolean
   onMoveUp: () => void
   onMoveDown: () => void
+  loopMode?: boolean
 }
 
-export const IntervalBlockEditor = ({ block, onChange, onRemove, canMoveUp, canMoveDown, onMoveUp, onMoveDown }: Props) => (
+export const IntervalBlockEditor = ({ block, onChange, onRemove, canMoveUp, canMoveDown, onMoveUp, onMoveDown, loopMode = false }: Props) => (
   <div className="bg-zinc-800 rounded-xl p-3 flex flex-col gap-2">
     <div className="flex items-center gap-2">
       <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: block.color }} />
@@ -52,39 +53,53 @@ export const IntervalBlockEditor = ({ block, onChange, onRemove, canMoveUp, canM
         >✕</button>
       </div>
     </div>
-    <div className="flex gap-3 flex-wrap">
+    {loopMode ? (
       <div className="flex gap-2 items-center">
-        <label className="text-zinc-400 text-xs">At second</label>
+        <label className="text-zinc-400 text-xs">Duration</label>
         <NumberInput
-          min={0}
-          max={9999}
+          min={1}
+          max={600}
           className="w-16 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
-          value={block.atSecond}
-          onChange={n => onChange({ ...block, atSecond: n })}
+          value={block.duration ?? 10}
+          onChange={n => onChange({ ...block, duration: n })}
         />
+        <span className="text-zinc-400 text-xs">sec</span>
       </div>
-      <label className="flex gap-2 items-center cursor-pointer">
-        <input
-          type="checkbox"
-          className="rounded"
-          checked={block.repeat ?? false}
-          onChange={e => onChange({ ...block, repeat: e.target.checked })}
-        />
-        <span className="text-zinc-400 text-xs">Repeat every</span>
-        {block.repeat && (
-          <>
-            <NumberInput
-              min={1}
-              max={999}
-              className="w-14 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
-              value={block.repeatInterval ?? 30}
-              onChange={n => onChange({ ...block, repeatInterval: n })}
-            />
-            <span className="text-zinc-400 text-xs">sec</span>
-          </>
-        )}
-      </label>
-    </div>
+    ) : (
+      <div className="flex gap-3 flex-wrap">
+        <div className="flex gap-2 items-center">
+          <label className="text-zinc-400 text-xs">At second</label>
+          <NumberInput
+            min={0}
+            max={9999}
+            className="w-16 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
+            value={block.atSecond}
+            onChange={n => onChange({ ...block, atSecond: n })}
+          />
+        </div>
+        <label className="flex gap-2 items-center cursor-pointer">
+          <input
+            type="checkbox"
+            className="rounded"
+            checked={block.repeat ?? false}
+            onChange={e => onChange({ ...block, repeat: e.target.checked })}
+          />
+          <span className="text-zinc-400 text-xs">Repeat every</span>
+          {block.repeat && (
+            <>
+              <NumberInput
+                min={1}
+                max={999}
+                className="w-14 bg-zinc-700 rounded-lg px-2 py-1 text-white text-sm outline-none"
+                value={block.repeatInterval ?? 30}
+                onChange={n => onChange({ ...block, repeatInterval: n })}
+              />
+              <span className="text-zinc-400 text-xs">sec</span>
+            </>
+          )}
+        </label>
+      </div>
+    )}
     <div className="flex gap-2 items-center">
       <label className="text-zinc-400 text-xs w-14">Color</label>
       <div className="flex gap-1 flex-wrap">
