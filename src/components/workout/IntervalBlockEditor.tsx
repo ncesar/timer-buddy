@@ -31,7 +31,11 @@ export const IntervalBlockEditor = ({ block, onChange, onRemove, canMoveUp, canM
         className="flex-1 bg-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm outline-none"
         placeholder="Block name"
         value={block.name}
-        onChange={e => onChange({ ...block, name: e.target.value })}
+        onChange={e => {
+          const name = e.target.value
+          const voiceFollowsName = !block.voiceCommand || block.voiceCommand === block.name
+          onChange({ ...block, name, voiceCommand: voiceFollowsName ? name || undefined : block.voiceCommand })
+        }}
       />
       <div className="flex gap-1">
         <button
