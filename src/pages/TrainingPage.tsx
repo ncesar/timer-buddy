@@ -67,6 +67,15 @@ export const TrainingPage = () => {
     ? Math.max(0, (currentRound?.restAfter ?? 0) - store.restElapsed)
     : 0
 
+  const nextRound = workout.rounds[store.currentRoundIndex + 1]
+  const nextRoundName = nextRound
+    ? (() => {
+        const defaultName = `Round ${store.currentRoundIndex + 2}`
+        const hasCustomName = nextRound.name && nextRound.name.trim() !== defaultName
+        return hasCustomName ? `${defaultName}, ${nextRound.name}` : defaultName
+      })()
+    : undefined
+
   return (
     <div className="training-screen min-h-screen bg-zinc-950 text-white flex flex-col">
       {/* Pre-start overlay */}
@@ -93,6 +102,7 @@ export const TrainingPage = () => {
               current={store.currentRoundIndex + 1}
               total={roundsTotal}
               roundName={currentRound?.name ?? ''}
+              nextRoundName={nextRoundName}
             />
 
             <div className="flex flex-col items-center gap-4 w-full">

@@ -2,9 +2,10 @@ type Props = {
   current: number
   total: number
   roundName: string
+  nextRoundName?: string
 }
 
-export const RoundProgress = ({ current, total, roundName }: Props) => (
+export const RoundProgress = ({ current, total, roundName, nextRoundName }: Props) => (
   <div className="flex flex-col items-center gap-2">
     <div className="text-zinc-300 font-semibold text-xl tracking-wide">
       Round <span className="text-white font-black">{current}</span>
@@ -12,6 +13,9 @@ export const RoundProgress = ({ current, total, roundName }: Props) => (
     </div>
     {roundName && (
       <span className="text-zinc-400 text-sm uppercase tracking-widest">{roundName}</span>
+    )}
+    {nextRoundName && (
+      <span className="text-zinc-500 text-xs uppercase tracking-widest">Next: {nextRoundName}</span>
     )}
     <div className="flex gap-1.5 mt-1">
       {Array.from({ length: total }).map((_, i) => (
